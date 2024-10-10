@@ -1,0 +1,108 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: tooljet-app
+  namespace: tooljet
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: k8s-service
+      version: v0.2.24
+      sourceRef:
+        kind: HelmRepository
+        name: gruntwork-charts
+        namespace: flux-system
+      interval: 15m
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    containerImage:
+      repository: tooljet/tooljet-ce
+      tag: CE-LTS-latest
+      pullPolicy: IfNotPresent
+
+    fullnameOverride: "tooljet-app"
+    applicationName: "tooljet-app"
+    replicaCount: 1
+    namespace: "tooljet"
+
+    containerArgs:
+      - "npm"
+      - "run"
+      - "start:prod"
+
+    envVars:
+      NODE_ENV: "production"
+      TOOLJET_HOST: "http://localhost:3000"
+      DEPLOYMENT_PLATFORM: "k8s:helm"
+      LANGUAGE: "en"
+      PG_DB_OWNER: "true"
+      DISABLE_SIGNUPS: "true"
+      DISABLE_MULTI_WORKSPACE: "true"
+      HIDE_ACCOUNT_SETUP_LINK: "true"
+      COMMENT_FEATURE_ENABLE: "false"
+      ENABLE_MARKETPLACE_FEATURE: "false"
+      ENABLE_MARKETPLACE_DEV_MODE: "false"
+      DISABLE_TOOLJET_TELEMETRY: "false"
+      CHECK_FOR_UPDATES: "0"
+
+    secrets:
+      postgres-tooljet-secrets:
+        as: environment
+        items:
+          db_name:
+            envVarName: PG_DB
+          db_user:
+            envVarName: PG_USER
+          db_password:
+            envVarName: PG_PASS
+          db_host:
+            envVarName: PG_HOST
+          db_port:
+            envVarName: PG_PORT
+      tooljet-secrets:
+        as: environment
+        items:
+          lockbox_key:
+            envVarName: LOCKBOX_MASTER_KEY
+          secret_key_base:
+            envVarName: SECRET_KEY_BASE
+
+    deploymentStrategy:
+      enabled: true
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 1
+
+    readinessProbe:
+      failureThreshold: 6
+      httpGet:
+        path: /api/health
+        port: 3000
+      periodSeconds: 10
+      timeoutSeconds: 4
+      initialDelaySeconds: 20
+
+    containerPorts:
+      http:
+        port: 3000
+        protocol: TCP
+
+    service:
+      enabled: true
+      ports:
+        http:
+          port: 3000
+          targetPort: http
+          protocol: TCP
+
+    serviceMonitor:
+      enabled: false

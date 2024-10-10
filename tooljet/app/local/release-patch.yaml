@@ -1,0 +1,24 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: tooljet-app
+  namespace: tooljet
+spec:
+  chart:
+    spec:
+      version: v0.2.24
+  values:
+    containerImage:
+      tag: CE-LTS-latest
+      pullPolicy: IfNotPresent
+
+    replicaCount: 1
+    minPodsAvailable: 0
+
+    containerResources:
+      requests:
+        memory: 2Gi
+        cpu: 1
+      limits:
+        memory: 2Gi
